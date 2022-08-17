@@ -1,0 +1,7 @@
+---
+- name: uninstall docker
+  hosts: localhost
+  tasks:
+  - name: print
+    shell: echo 'this is case'
+    

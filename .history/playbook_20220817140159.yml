@@ -1,0 +1,89 @@
+---
+  name: Playbook to stop and remove all Docker related packages and file from hosts
+  hosts: all
+  become: yes
+  
+    tasks:
+
+    - name: Remove the docker-ee package (enterprise)
+      ignore_errors: yes
+      yum:
+        name: docker-ee
+        state: removed
+
+    - name: Remove the docker-ce package (community edition)
+      ignore_errors: yes
+      yum:
+        name: docker-ce
+        state: removed
+
+    - name: Remove the base docker package
+      ignore_errors: yes
+      yum:
+        name: docker
+        state: removed
+
+    - name: Delete the /var/lib/docker directory
+      ignore_errors: yes
+      file:
+        path: /var/lib/docker
+        state: absent
+
+  - hosts: all
+      become: yes
+      gather_facts: false
+      tasks:
+  - name: Install docker packages
+      remote_user: ansible_ubuntu_demo
+      apt:
+      name: ['apt-transport-https','ca-certificates', 'curl', 'software-properties-common']
+      state: present
+      update_cache: yes
+      tags:
+      - docker
+
+  - name: Add Docker s GPG key for ubuntu from official site
+      remote_user: ansible_ubuntu_demo
+      apt_key:
+      url: https://download.docker.com/linux/ubuntu/gpg
+      state: present
+      tags: - docker
+
+  - name: Install docker-ce
+      remote_user: ansible_ubuntu_demo
+      apt:
+      name: docker-ce
+      state: present
+      update_cache: yes
+      tags:
+       - docker
+
+
+--- name: install squidproxy
+    hosts: webservers
+
+    tasks:
+  - name: ensure apache is at the latest version
+    yum:
+      name: httpd
+      state: latest
+  - name: write the apache config file
+    template:
+      src: /srv/httpd.j2
+      dest: /etc/httpd.conf
+
+  - name: update db servers
+    hosts: databases
+    remote_user: root
+
+    tasks:
+  - name: ensure postgresql is at the latest version
+    yum:
+      name: postgresql
+      state: latest
+  - name: ensure that postgresql is started
+    service:
+      name: postgresql
+      state: started
+
+      
