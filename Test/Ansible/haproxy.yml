@@ -1,0 +1,56 @@
+---
+### install HAproxy & Squidproxy Ansible ##
+
+- hosts: 43.255.106.113 #ARGENTO-DEV-SV
+  vars:
+        ansible_connection: 'ssh'  
+        ansible_ssh_pass: 'R3dh@t!@3'
+        leaf01:
+         - hosts: #PROXY-SV
+            ecs-sonarqube:
+              hosts: 192.168.1.85 
+              ansible_connection: 'ssh'  
+              ansible_ssh_pass: 'R3dh@t!@#'
+  tasks:
+    - name: "Configure Load balancer"
+      package:
+        name: haproxy
+    # - template:
+    #     dest: "/etc/haproxy/haproxy.cfg"
+    #     src: "/root/ws1/haproxy.cfg"
+    - service:
+        name: "haproxy"
+        state: restarted
+
+- name: setup proxy
+  hosts: localhost
+  become: true
+  vars:
+    squid_port: 3128
+    localnet: "192.168.1.85/24"
+  tasks:
+    - name: squid installed
+      ansible.builtin.yum:
+        name: squid
+        state: latest
+    # - name: squid configuration
+    #   ansible.builtin.template:
+    #     src: "templates/squid.conf.j2"
+    #     dest: "/etc/squid/squid.conf"
+    - name: squid service enabled
+      ansible.builtin.service:
+        name: squid
+        enabled: true
+        state: started
+    # - name: FirewallD
+    #   ansible.posix.firewalld:
+    #     port: "3128/tcp"
+    #     state: enabled
+    #     immediate: yes
+    #     permanent: yes
+    # - name: open firewall
+    #   ansible.posix.firewalld:
+    #     port: "0.0.0.0:3128"
+    #     state: enabled
+    #     immediate: true
+    #     permanent: true

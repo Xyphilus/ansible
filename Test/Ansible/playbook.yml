@@ -1,0 +1,153 @@
+---
+ ### TO REMOTE CONTROL TO ARGENTO-DEV INSTALL IN SANDBOX WITH ANSIBLE CODE
+
+  - hosts: 43.255.106.113 #ARGENTO-DEV-SV
+    vars:
+        ansible_connection: 'ssh'  
+        ansible_ssh_pass: 'R3dh@t!@3'
+        leaf01:
+         - hosts: #SONARQUBE-SV
+            ecs-sonarqube:
+              hosts: 192.168.3.204 
+              ansible_connection: 'ssh'  
+              ansible_ssh_pass: 'R3dh@t!@#'
+    tasks:
+    - name: Install docker packages
+    remote_user: ubuntu 
+    apt:
+        name: "{{ item }}"
+        state: present
+        update_cache: yes
+        with_items:
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - software-properties-common
+    tags:
+      - docker
+  - name: Add Docker s official GPG key
+    remote_user: ubuntu
+    apt_key:
+      url: https://download.docker.com/linux/ubuntu/gpg
+      state: present
+    tags:
+      - docker
+  - name: Verify that we have the key with the fingerprint
+    remote_user: ubuntu
+    apt_key:
+      id: 0EBFCD88
+      state: present
+    tags:
+      - docker
+  - name: Set up the stable repository
+    remote_user: ubuntu
+    apt_repository:
+      repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable
+      state: present
+      update_cache: yes
+    tags:
+      - docker
+  - name: Update apt packages
+    remote_user: ubuntu
+    apt:
+      update_cache: yes
+    tags:
+      - docker
+  - name: Install docker
+    remote_user: ubuntu
+    apt:
+      name: docker-ce
+      state: present
+      update_cache: yes
+    #notify: Start docker on boot
+    tags:
+      - docker
+  - name: Add remote "ubuntu" user to "docker" group
+    remote_user: ubuntu
+    user:
+      name: "ubuntu"
+      group: "docker"
+      append: yes
+    tags:
+      - docker
+  - name: Install docker-compose
+    remote_user: ubuntu
+    get_url: 
+      url : https://github.com/docker/compose/releases/download/1.25.1-rc1/docker-compose-Linux-x86_64
+      dest: /usr/local/bin/docker-compose
+      mode: 'u+x,g+x'
+
+      tasks:
+      - name: install psql
+      psql:
+      image: postgres
+      container_name: "sonar-psql"
+      ports:
+        - "3309:3306"
+        - name: install sonarqube
+      sonarqube:
+        image: sonarqube
+        privileged: true
+        container_name: "sonar-web"
+        restart: always
+      networks:
+      - sonarnet
+      environment:
+          - TZ=Asia/Bangkok
+          - ES_JAVA_HOME=/opt/java/openjdk
+          - SONARQUBE_JDBC_USERNAME=sonar
+          - SONARQUBE_JDBC_PASSWORD=test123
+          - SONARQUBE_JDBC_URL=jdbc:postgresql://psql:5432/sonar
+
+            ports:
+            - "9000:9000"
+      volumes:
+          - sonarqube-conf:/opt/sonarqube/conf
+          - sonarqube-data:/opt/sonarqube/data
+          - sonarqube-extensions:/opt/sonarqube/extensions
+        networks:
+              sonarnet:
+              driver: bridge
+              volumes:
+              sonarqube-conf:
+              sonarqube-data:
+              sonarqube-extensions:
+              sonarqube-postgresql:
+              sonarqube-postgresql_data:
+                - sonarnet
+        environment:
+          - POSTGRES_USER=sonar
+          - POSTGRES_PASSWORD=test123
+            volumes:
+              - sonarqube-postgresql:/var/lib/postgresql
+              - sonarqube-postgresql_data:/var/lib/postgresql/data
+            ports:
+              - "3309:3306"
+            sonarqube:
+            image: sonarqube
+                privileged: true
+            container_name: "sonar-web"
+            restart: always
+          
+        networks:
+            - sonarnet
+        environment:
+          - TZ=Asia/Bangkok
+          - ES_JAVA_HOME=/opt/java/openjdk
+          - SONARQUBE_JDBC_USERNAME=sonar
+          - SONARQUBE_JDBC_PASSWORD=test123
+          - SONARQUBE_JDBC_URL=jdbc:postgresql://psql:5432/sonar
+        ports:
+          - "9000:9000"
+        volumes:
+          - sonarqube-conf:/opt/sonarqube/conf
+          - sonarqube-data:/opt/sonarqube/data
+          - sonarqube-extensions:/opt/sonarqube/extensions
+        networks:
+          sonarnet:
+          driver: bridge
+          sonarqube-conf:
+          sonarqube-data:
+          sonarqube-extensions:
+          sonarqube-postgresql:
+          sonarqube-postgresql_data:
